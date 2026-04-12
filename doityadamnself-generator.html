@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>DoItYaDamnSelf — Guide Generator (Claude)</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+<style>
+  :root {
+    --black: #0d0d0d;
+    --white: #f5f2ee;
+    --yellow: #f0e040;
+    --red: #e03030;
+    --gray: #1e1e1e;
+    --gray2: #2e2e2e;
+    --gray3: #444;
+    --muted: #888;
+    --border: #333;
+    --font-display: 'Bebas Neue', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--black); color: var(--white); font-family: var(--font-body); min-height: 100vh; overflow-x: hidden; }
+
+  header { border-bottom: 2px solid var(--yellow); padding: 20px 40px; display: flex; align-items: baseline; gap: 16px; position: sticky; top: 0; background: var(--black); z-index: 100; }
+  .logo { font-family: var(--font-display); font-size: 2rem; color: var(--yellow); letter-spacing: 2px; line-height: 1; }
+  .logo span { color: var(--white); }
+  .tagline { font-size: 11px; color: var(--muted); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 1px; }
+  .header-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+  .api-status { font-family: var(--font-mono); font-size: 11px; padding: 4px 10px; border-radius: 4px; border: 1px solid var(--border); color: var(--muted); }
+  .api-status.connected { border-color: #2a6; color: #4d4; }
+  .free-badge { font-family: var(--font-mono); font-size: 10px; padding: 3px 8px; border-radius: 4px; background: #1a3a1a; border: 1px solid #2a6; color: #4d4; letter-spacing: 1px; }
+
+  main { display: grid; grid-template-columns: 380px 1fr; min-height: calc(100vh - 65px); }
+
+  .left-panel { background: var(--gray); border-right: 1px solid var(--border); padding: 32px 28px; display: flex; flex-direction: column; gap: 24px; overflow-y: auto; }
+
+  .panel-section label { display: block; font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 6px; }
+  .help-link { display: inline-block; font-family: var(--font-mono); font-size: 10px; color: #4d4; margin-bottom: 8px; text-decoration: none; }
+  .help-link:hover { color: var(--yellow); }
+
+  .api-input-wrap { position: relative; }
+  .api-input-wrap input { width: 100%; background: var(--black); border: 1px solid var(--border); color: var(--white); font-family: var(--font-mono); font-size: 12px; padding: 10px 40px 10px 12px; border-radius: 6px; outline: none; transition: border-color .2s; }
+  .api-input-wrap input:focus { border-color: var(--yellow); }
+  .toggle-vis { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--muted); cursor: pointer; font-size: 16px; padding: 2px; }
+  .toggle-vis:hover { color: var(--white); }
+
+  .model-pills { display: flex; gap: 6px; margin-top: 4px; }
+  .model-pill { flex: 1; font-size: 11px; font-family: var(--font-mono); padding: 7px 6px; border: 1px solid var(--border); border-radius: 6px; color: var(--muted); cursor: pointer; background: none; text-align: center; transition: all .15s; }
+  .model-pill:hover { border-color: var(--yellow); color: var(--yellow); }
+  .model-pill.active { border-color: #4d4; color: #4d4; background: #1a3a1a; }
+  .model-pill .pill-name { display: block; font-size: 11px; }
+  .model-pill .pill-sub { display: block; font-size: 9px; color: var(--muted); margin-top: 2px; }
+  .model-pill.active .pill-sub { color: #2a6; }
+
+  .prompt-area { width: 100%; background: var(--black); border: 1px solid var(--border); color: var(--white); font-family: var(--font-body); font-size: 14px; line-height: 1.6; padding: 14px; border-radius: 6px; resize: vertical; min-height: 160px; outline: none; transition: border-color .2s; }
+  .prompt-area:focus { border-color: var(--yellow); }
+  .prompt-area::placeholder { color: var(--gray3); }
+
+  .quick-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .chip { font-size: 11px; font-family: var(--font-mono); padding: 4px 10px; border: 1px solid var(--border); border-radius: 20px; color: var(--muted); cursor: pointer; transition: all .15s; background: none; white-space: nowrap; }
+  .chip:hover { border-color: var(--yellow); color: var(--yellow); }
+
+  .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .settings-grid select { width: 100%; background: var(--black); border: 1px solid var(--border); color: var(--white); font-family: var(--font-mono); font-size: 11px; padding: 8px 10px; border-radius: 6px; outline: none; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23666'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; }
+
+  .price-input-wrap { display: flex; align-items: center; background: var(--black); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .price-input-wrap span { padding: 8px 10px; font-family: var(--font-mono); font-size: 12px; color: var(--muted); border-right: 1px solid var(--border); }
+  .price-input-wrap input { background: none; border: none; color: var(--white); font-family: var(--font-mono); font-size: 12px; padding: 8px 10px; outline: none; width: 100%; }
+
+  .generate-btn { width: 100%; background: var(--yellow); color: var(--black); font-family: var(--font-display); font-size: 1.4rem; letter-spacing: 2px; padding: 16px; border: none; border-radius: 6px; cursor: pointer; transition: all .15s; }
+  .generate-btn:hover { background: #fff176; transform: translateY(-1px); }
+  .generate-btn:active { transform: translateY(0); }
+  .generate-btn:disabled { background: var(--gray2); color: var(--muted); cursor: not-allowed; transform: none; }
+  .spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid var(--black); border-top-color: transparent; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 8px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .right-panel { display: flex; flex-direction: column; }
+  .preview-toolbar { background: var(--gray); border-bottom: 1px solid var(--border); padding: 12px 28px; display: flex; align-items: center; gap: 12px; }
+  .toolbar-label { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); margin-right: auto; }
+  .tool-btn { background: none; border: 1px solid var(--border); color: var(--white); font-family: var(--font-mono); font-size: 11px; padding: 6px 14px; border-radius: 4px; cursor: pointer; transition: all .15s; }
+  .tool-btn:hover { border-color: var(--yellow); color: var(--yellow); }
+  .tool-btn:disabled { opacity: .3; cursor: not-allowed; }
+  .tool-btn.primary { background: var(--yellow); color: var(--black); border-color: var(--yellow); font-weight: 600; }
+  .tool-btn.primary:hover { background: #fff176; }
+
+  .preview-area { flex: 1; overflow-y: auto; padding: 48px; background: var(--black); }
+
+  .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 16px; color: var(--gray3); text-align: center; }
+  .empty-icon { font-size: 64px; opacity: .3; }
+  .empty-state h2 { font-family: var(--font-display); font-size: 2rem; color: var(--gray3); letter-spacing: 2px; }
+  .empty-state p { font-size: 14px; color: var(--muted); max-width: 360px; line-height: 1.6; }
+
+  .status-bar { background: var(--gray2); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; margin-bottom: 28px; display: none; }
+  .status-bar.visible { display: flex; align-items: center; gap: 12px; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--yellow); animation: pulse 1s ease-in-out infinite; flex-shrink: 0; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(0.8)} }
+  .status-text { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+
+  .doc-preview { max-width: 800px; margin: 0 auto; animation: fadeIn .4s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)} }
+  .doc-header { border-bottom: 3px solid var(--yellow); padding-bottom: 24px; margin-bottom: 36px; }
+  .doc-site-name { font-family: var(--font-mono); font-size: 11px; color: var(--yellow); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px; }
+  .doc-title { font-family: var(--font-display); font-size: 3rem; line-height: 1.1; color: var(--white); letter-spacing: 1px; margin-bottom: 12px; }
+  .doc-meta { display: flex; gap: 20px; font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+
+  .doc-content { color: #ccc; line-height: 1.8; font-size: 15px; }
+  .doc-content h1 { font-family: var(--font-display); font-size: 2.2rem; color: var(--white); letter-spacing: 1px; margin: 40px 0 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  .doc-content h2 { font-family: var(--font-display); font-size: 1.6rem; color: var(--yellow); letter-spacing: 1px; margin: 32px 0 12px; }
+  .doc-content h3 { font-size: 1rem; font-weight: 600; color: var(--white); margin: 24px 0 8px; text-transform: uppercase; letter-spacing: .5px; font-family: var(--font-mono); }
+  .doc-content p { margin-bottom: 16px; }
+  .doc-content ul, .doc-content ol { margin: 0 0 16px 20px; }
+  .doc-content li { margin-bottom: 8px; }
+  .doc-content strong { color: var(--white); font-weight: 600; }
+  .doc-content a { color: var(--yellow); text-decoration: none; }
+  .doc-content a:hover { text-decoration: underline; }
+  .doc-content code { font-family: var(--font-mono); font-size: 12px; background: var(--gray2); padding: 2px 6px; border-radius: 3px; color: #f0e040cc; }
+  .doc-content blockquote { border-left: 3px solid var(--yellow); padding: 12px 20px; margin: 20px 0; background: var(--gray); border-radius: 0 6px 6px 0; color: var(--muted); font-style: italic; }
+  .doc-content table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 13px; }
+  .doc-content th { background: var(--gray2); color: var(--yellow); font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; padding: 10px 14px; text-align: left; border-bottom: 2px solid var(--yellow); }
+  .doc-content td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: #ccc; }
+  .doc-content tr:last-child td { border-bottom: none; }
+  .doc-content hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--black); }
+  ::-webkit-scrollbar-thumb { background: var(--gray3); border-radius: 3px; }
+
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--gray2); border: 1px solid var(--border); color: var(--white); font-family: var(--font-mono); font-size: 12px; padding: 12px 20px; border-radius: 6px; opacity: 0; transform: translateY(10px); transition: all .25s; pointer-events: none; z-index: 999; }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.success { border-color: #2a6; color: #4d4; }
+  .toast.error { border-color: var(--red); color: #f66; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">DoIt<span>Ya</span>DamnSelf</div>
+  <div class="tagline">Guide Generator — Internal Tool</div>
+  <div class="header-right">
+    <span class="free-badge">CLAUDE · ANTHROPIC</span>
+    <div class="api-status" id="apiStatus">⬤ No API Key</div>
+  </div>
+</header>
+
+<main>
+  <div class="left-panel">
+
+    <div class="panel-section">
+      <label>Claude API Key</label>
+      <a class="help-link" href="https://console.anthropic.com/settings/keys" target="_blank">→ Get your key at console.anthropic.com</a>
+      <div class="api-input-wrap">
+        <input type="password" id="apiKey" placeholder="sk-ant-api03-..." autocomplete="off"/>
+        <button class="toggle-vis" onclick="toggleKey()">👁</button>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <label>Model</label>
+      <div class="model-pills">
+        <button class="model-pill active" data-model="claude-sonnet-4-5" onclick="selectModel(this)">
+          <span class="pill-name">Sonnet</span>
+          <span class="pill-sub">~$0.08 · Best value</span>
+        </button>
+        <button class="model-pill" data-model="claude-opus-4-5" onclick="selectModel(this)">
+          <span class="pill-name">Opus</span>
+          <span class="pill-sub">~$0.25 · Max quality</span>
+        </button>
+        <button class="model-pill" data-model="claude-haiku-4-5-20251001" onclick="selectModel(this)">
+          <span class="pill-name">Haiku</span>
+          <span class="pill-sub">~$0.02 · Fastest</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <label>What guide do you want to create?</label>
+      <textarea class="prompt-area" id="promptInput" placeholder="e.g. Create a detailed step-by-step guide on how to do a legal name change in the state of California. Include all required forms, court fees, processing times, and official links."></textarea>
+      <div class="quick-chips">
+        <button class="chip" onclick="useChip('legal name change in California')">CA Name Change</button>
+        <button class="chip" onclick="useChip('file a small claims court case in Texas')">TX Small Claims</button>
+        <button class="chip" onclick="useChip('get a passport for the first time in the USA')">US Passport</button>
+        <button class="chip" onclick="useChip('register an LLC in Florida')">FL LLC</button>
+        <button class="chip" onclick="useChip('dispute a credit report error')">Credit Dispute</button>
+        <button class="chip" onclick="useChip('apply for FAFSA financial aid')">FAFSA</button>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <label>Settings</label>
+      <div class="settings-grid">
+        <select id="detailLevel">
+          <option value="standard">Standard detail</option>
+          <option value="detailed" selected>Very detailed</option>
+          <option value="exhaustive">Exhaustive</option>
+        </select>
+        <select id="docState">
+          <option value="">Any / Federal</option>
+          <option>Alabama</option><option>Alaska</option><option>Arizona</option><option>Arkansas</option>
+          <option>California</option><option>Colorado</option><option>Connecticut</option><option>Delaware</option>
+          <option>Florida</option><option>Georgia</option><option>Hawaii</option><option>Idaho</option>
+          <option>Illinois</option><option>Indiana</option><option>Iowa</option><option>Kansas</option>
+          <option>Kentucky</option><option>Louisiana</option><option>Maine</option><option>Maryland</option>
+          <option>Massachusetts</option><option>Michigan</option><option>Minnesota</option><option>Mississippi</option>
+          <option>Missouri</option><option>Montana</option><option>Nebraska</option><option>Nevada</option>
+          <option>New Hampshire</option><option>New Jersey</option><option>New Mexico</option><option>New York</option>
+          <option>North Carolina</option><option>North Dakota</option><option>Ohio</option><option>Oklahoma</option>
+          <option>Oregon</option><option>Pennsylvania</option><option>Rhode Island</option><option>South Carolina</option>
+          <option>South Dakota</option><option>Tennessee</option><option>Texas</option><option>Utah</option>
+          <option>Vermont</option><option>Virginia</option><option>Washington</option><option>West Virginia</option>
+          <option>Wisconsin</option><option>Wyoming</option>
+        </select>
+      </div>
+    </div>
+
+    <button class="generate-btn" id="generateBtn" onclick="generateGuide()">GENERATE GUIDE</button>
+
+  </div>
+
+  <div class="right-panel">
+    <div class="preview-toolbar">
+      <span class="toolbar-label">Preview</span>
+      <button class="tool-btn" id="copyBtn" onclick="copyMarkdown()" disabled>📋 Copy MD</button>
+      <button class="tool-btn primary" id="downloadBtn" onclick="downloadPDF()" disabled>⬇ Download PDF</button>
+    </div>
+    <div class="preview-area">
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">📋</div>
+        <h2>NO GUIDE YET</h2>
+        <p>Paste your Claude API key from console.anthropic.com, describe your guide, and hit Generate. Your formatted PDF will be ready in about 30 seconds.</p>
+      </div>
+      <div class="status-bar" id="statusBar">
+        <div class="status-dot"></div>
+        <div class="status-text" id="statusText">Connecting to Gemini...</div>
+      </div>
+      <div id="docOutput"></div>
+    </div>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let generatedMarkdown = '';
+let docTitle = '';
+let selectedModel = 'claude-sonnet-4-5';
+
+window.addEventListener('load', () => {
+  const saved = localStorage.getItem('diyds_claude_key');
+  if (saved) { document.getElementById('apiKey').value = saved; updateApiStatus(true); }
+});
+
+document.getElementById('apiKey').addEventListener('input', function() {
+  const val = this.value.trim();
+  localStorage.setItem('diyds_claude_key', val);
+  updateApiStatus(val.startsWith('sk-ant'));
+});
+
+function updateApiStatus(ok) {
+  const el = document.getElementById('apiStatus');
+  el.textContent = ok ? '⬤ API Key Set' : '⬤ No API Key';
+  el.className = 'api-status' + (ok ? ' connected' : '');
+}
+
+function toggleKey() {
+  const inp = document.getElementById('apiKey');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+function selectModel(btn) {
+  document.querySelectorAll('.model-pill').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  selectedModel = btn.dataset.model;
+}
+
+function useChip(text) {
+  document.getElementById('promptInput').value = `Create a step-by-step, very detailed guide on how to ${text}. Include all required forms, fees, processing times, tips, warnings, and any official government or agency links.`;
+}
+
+function setStatus(text) {
+  document.getElementById('statusBar').className = 'status-bar visible';
+  document.getElementById('statusText').textContent = text;
+}
+function hideStatus() { document.getElementById('statusBar').className = 'status-bar'; }
+
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  setTimeout(() => t.className = 'toast', 3500);
+}
+
+async function generateGuide() {
+  const apiKey = document.getElementById('apiKey').value.trim();
+  const prompt = document.getElementById('promptInput').value.trim();
+  const detail = document.getElementById('detailLevel').value;
+  const state = document.getElementById('docState').value;
+
+  if (!apiKey || !apiKey.startsWith('sk-ant')) { showToast('Enter your Claude API key first (starts with sk-ant)', 'error'); return; }
+  if (!prompt) { showToast('Describe the guide you want to create', 'error'); return; }
+
+  const btn = document.getElementById('generateBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>GENERATING...';
+  document.getElementById('copyBtn').disabled = true;
+  document.getElementById('downloadBtn').disabled = true;
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('docOutput').innerHTML = '';
+  generatedMarkdown = '';
+
+  const detailMap = {
+    standard: 'thorough and clear',
+    detailed: 'very detailed with every sub-step explained',
+    exhaustive: 'exhaustive — leave absolutely nothing out, cover every edge case, tip, and variation'
+  };
+  const stateNote = state ? ` Focus specifically on ${state} state requirements, fees, forms, and official resources.` : '';
+
+  const fullPrompt = `You are an expert guide writer for DoItYaDamnSelf.com — a website that helps everyday people navigate complex bureaucratic, legal, and administrative processes without hiring professionals.
+
+Write a guide that is ${detailMap[detail]}.${stateNote}
+
+Requirements:
+- Plain, direct language — not condescending, not overly casual
+- Clear numbered steps throughout
+- Exact fees, form names/numbers, and processing times where known
+- Official government or agency URLs formatted as markdown links
+- A "What You'll Need" checklist near the top
+- A "Common Mistakes to Avoid" section
+- A "Total Cost Estimate" table showing all fees
+- An overall "Time Estimate" for the whole process
+- A "Helpful Resources" section with links at the end
+
+Format entirely in Markdown:
+- # for the main title
+- ## for major sections  
+- ### for sub-steps or sub-sections
+- Use tables for fees and costs
+- Use > blockquotes for important warnings or pro tips
+- Use numbered lists for sequential steps
+- Use bullet points for non-sequential items
+
+Now write the guide for this request:
+${prompt}
+
+Structure it exactly as:
+1. # [Descriptive Title]
+2. One or two sentence intro
+3. ## What You'll Need
+4. ## Time & Cost Overview (table with estimates)
+5. ## Step-by-Step Instructions (detailed numbered steps)
+6. ## Common Mistakes to Avoid
+7. ## Helpful Resources (with real links)
+
+Be specific, accurate, and genuinely helpful. People are paying for this guide — make it worth every penny.`;
+
+  try {
+    setStatus('Connecting to Claude...');
+    setStatus('Claude is researching and writing your guide — this takes 20–40 seconds...');
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: selectedModel,
+        max_tokens: 16000,
+        messages: [{ role: 'user', content: fullPrompt }]
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      const msg = err.error?.message || `API error ${res.status}`;
+      if (res.status === 401) throw new Error('Invalid API key — check console.anthropic.com');
+      if (res.status === 429) throw new Error('Rate limit hit — wait a moment and try again');
+      if (res.status === 400) throw new Error('Bad request: ' + msg);
+      throw new Error(msg);
+    }
+
+    const data = await res.json();
+    const text = data.content?.[0]?.text;
+    if (!text) throw new Error('No content returned. Try again.');
+
+    generatedMarkdown = text.trim();
+    const titleMatch = generatedMarkdown.match(/^#\s+(.+)/m);
+    docTitle = titleMatch ? titleMatch[1] : 'DIY Guide';
+
+    hideStatus();
+    renderPreview(generatedMarkdown);
+    document.getElementById('copyBtn').disabled = false;
+    document.getElementById('downloadBtn').disabled = false;
+    showToast('Guide generated by Claude!', 'success');
+
+  } catch (err) {
+    hideStatus();
+    document.getElementById('emptyState').style.display = 'flex';
+    showToast('Error: ' + err.message, 'error');
+    console.error(err);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'GENERATE GUIDE';
+  }
+}
+
+function renderPreview(md) {
+  const bodyMd = md.replace(/^#\s+.+\n?/m, '').trim();
+  document.getElementById('docOutput').innerHTML = `
+    <div class="doc-preview">
+      <div class="doc-header">
+        <div class="doc-site-name">DoItYaDamnSelf.com</div>
+        <div class="doc-title">${esc(docTitle)}</div>
+      </div>
+      <div class="doc-content">${marked.parse(bodyMd)}</div>
+    </div>`;
+}
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function copyMarkdown() {
+  navigator.clipboard.writeText(generatedMarkdown).then(() => showToast('Markdown copied!', 'success'));
+}
+
+async function downloadPDF() {
+  if (!generatedMarkdown) return;
+  const btn = document.getElementById('downloadBtn');
+  btn.disabled = true; btn.textContent = '⏳ Building PDF...';
+
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'pt', format: 'letter' });
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    const margin = 56, usableW = pageW - margin * 2;
+    let y = margin;
+
+    function checkPage(needed = 20) {
+      if (y + needed > pageH - margin) { doc.addPage(); y = margin; }
+    }
+
+    doc.setFillColor(240, 224, 64);
+    doc.rect(0, 0, pageW, 72, 'F');
+    doc.setTextColor(13, 13, 13);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(28);
+    doc.text('DOITYADAMNSELF.COM', margin, 38);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+    doc.text('Your DIY Guide to Getting It Done', margin, 56);
+
+    y = 100;
+    doc.setTextColor(13, 13, 13);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(22);
+    const titleLines = doc.splitTextToSize(docTitle.toUpperCase(), usableW);
+    doc.text(titleLines, margin, y);
+    y += titleLines.length * 28 + 10;
+    doc.setDrawColor(240, 224, 64); doc.setLineWidth(2);
+    doc.line(margin, y, pageW - margin, y);
+    y += 20;
+
+    const lines = generatedMarkdown.split('\n');
+
+    function stripBold(text) {
+      return text.replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1');
+    }
+
+    function renderInlineLinks(line, yPos) {
+      // Renders a line that may contain markdown links [text](url)
+      const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+      let match;
+      let lastIndex = 0;
+      const parts = [];
+      while ((match = linkRegex.exec(line)) !== null) {
+        if (match.index > lastIndex) {
+          parts.push({ type: 'text', content: line.slice(lastIndex, match.index) });
+        }
+        parts.push({ type: 'link', text: match[1], url: match[2] });
+        lastIndex = match.index + match[0].length;
+      }
+      if (lastIndex < line.length) {
+        parts.push({ type: 'text', content: line.slice(lastIndex) });
+      }
+
+      let xPos = margin;
+      let currentY = yPos;
+      const lineH = 14;
+
+      for (const part of parts) {
+        if (part.type === 'text') {
+          const clean = stripBold(part.content);
+          if (!clean) continue;
+          const w = doc.splitTextToSize(clean, usableW);
+          doc.setTextColor(40, 40, 40);
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(10);
+          doc.text(w, margin, currentY);
+          currentY += w.length * lineH + 2;
+        } else {
+          // Blue underlined link
+          const display = part.text;
+          const urlLine = '  \u2192 ' + part.url;
+          doc.setTextColor(0, 102, 204);
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(10);
+          const tw = doc.splitTextToSize(display, usableW - 10);
+          doc.text(tw, margin + 10, currentY);
+          const tw2 = doc.splitTextToSize(urlLine, usableW - 10);
+          doc.setFontSize(9);
+          doc.setTextColor(0, 102, 204);
+          doc.text(tw2, margin + 10, currentY + tw.length * lineH);
+          // Clickable area
+          doc.link(margin + 10, currentY - 10, usableW - 10, (tw.length + tw2.length) * lineH + 4, { url: part.url });
+          currentY += (tw.length + tw2.length) * lineH + 6;
+          doc.setTextColor(40, 40, 40);
+          doc.setFontSize(10);
+        }
+      }
+      return currentY;
+    }
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (line.match(/^#\s+/) && i < 5) continue;
+
+      // H2 section header
+      if (line.match(/^##\s+/)) {
+        const text = line.replace(/^##\s+/, '').toUpperCase();
+        checkPage(44); y += 14;
+        doc.setFillColor(30, 30, 30);
+        doc.rect(margin - 8, y - 14, usableW + 16, 26, 'F');
+        doc.setTextColor(240, 224, 64);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.text(text, margin, y);
+        y += 20; doc.setTextColor(30, 30, 30);
+
+      // H3
+      } else if (line.match(/^###\s+/)) {
+        const text = stripBold(line.replace(/^###\s+/, ''));
+        checkPage(28); y += 10;
+        doc.setTextColor(13, 13, 13);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        const w = doc.splitTextToSize(text, usableW - 10);
+        doc.text(w, margin + 4, y);
+        y += w.length * 14 + 4;
+
+      // Blockquote / callout (Pro Tip, Warning, Important, Note)
+      } else if (line.match(/^>\s+/)) {
+        const text = stripBold(line.replace(/^>\s+/, ''));
+        checkPage(36); y += 6;
+        const w = doc.splitTextToSize(text, usableW - 28);
+        const bh = w.length * 13 + 18;
+        doc.setFillColor(46, 46, 46);
+        doc.rect(margin, y - 12, usableW, bh, 'F');
+        doc.setDrawColor(240, 224, 64);
+        doc.setLineWidth(3);
+        doc.line(margin, y - 12, margin, y - 12 + bh);
+        doc.setTextColor(220, 220, 150);
+        doc.setFont('helvetica', 'italic');
+        doc.setFontSize(10);
+        doc.text(w, margin + 14, y);
+        y += bh + 6;
+
+      // Checkbox items [ ]
+      } else if (line.match(/^\s*\[\s*\]\s+/)) {
+        const text = stripBold(line.replace(/^\s*\[\s*\]\s+/, ''));
+        const w = doc.splitTextToSize(text, usableW - 28);
+        checkPage(w.length * 13 + 6);
+        // Draw checkbox
+        doc.setDrawColor(100, 100, 100);
+        doc.setLineWidth(0.8);
+        doc.rect(margin + 2, y - 9, 10, 10);
+        doc.setTextColor(60, 60, 60);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        doc.text(w, margin + 18, y);
+        y += w.length * 13 + 5;
+
+      // Bullet / unordered list
+      } else if (line.match(/^\s*[-*+]\s+/)) {
+        const indent = line.match(/^(\s+)/) ? 20 : 0;
+        const raw = line.replace(/^\s*[-*+]\s+/, '');
+        const hasLink = raw.includes('](');
+        checkPage(20);
+        doc.setFillColor(240, 224, 64);
+        doc.circle(margin + indent + 4, y - 3, 2, 'F');
+        if (hasLink) {
+          y = renderInlineLinks(raw, y);
+        } else {
+          const text = stripBold(raw);
+          const w = doc.splitTextToSize(text, usableW - 22 - indent);
+          doc.setTextColor(60, 60, 60);
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(10);
+          doc.text(w, margin + 18 + indent, y);
+          y += w.length * 13 + 4;
+        }
+
+      // Numbered list
+      } else if (line.match(/^\d+\.\d*\s+/)) {
+        const numMatch = line.match(/^(\d+\.\d*)\s+(.*)/);
+        if (!numMatch) continue;
+        const num = numMatch[1];
+        const raw = numMatch[2];
+        const hasLink = raw.includes('](');
+        const w = doc.splitTextToSize(stripBold(raw), usableW - 32);
+        checkPage(w.length * 13 + 6);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(160, 130, 0);
+        doc.setFontSize(10);
+        doc.text(num, margin, y);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(60, 60, 60);
+        if (hasLink) {
+          y = renderInlineLinks(raw, y);
+        } else {
+          doc.text(w, margin + 30, y);
+          y += w.length * 13 + 4;
+        }
+
+      // Table row
+      } else if (line.match(/^\|/)) {
+        const cells = line.split('|').filter(c => c.trim() !== '');
+        if (line.match(/^[\|\s\-:]+$/)) { y += 2; continue; }
+        checkPage(22);
+        const isHeader = lines[i+1] && lines[i+1].match(/^[\|\s\-:]+$/);
+        const colW = usableW / cells.length;
+        if (isHeader) {
+          doc.setFillColor(46, 46, 46);
+          doc.rect(margin, y - 12, usableW, 22, 'F');
+          doc.setTextColor(240, 224, 64);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(9);
+        } else {
+          doc.setDrawColor(60, 60, 60);
+          doc.setLineWidth(0.5);
+          doc.line(margin, y + 6, pageW - margin, y + 6);
+          doc.setTextColor(60, 60, 60);
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(9);
+        }
+        cells.forEach((cell, ci) => {
+          const cellText = stripBold(cell.trim());
+          doc.text(doc.splitTextToSize(cellText, colW - 8), margin + ci * colW + 4, y);
+        });
+        y += 20;
+
+      // HR divider
+      } else if (line.match(/^---+$/)) {
+        checkPage(20); y += 8;
+        doc.setDrawColor(200, 200, 200);
+        doc.setLineWidth(0.5);
+        doc.line(margin, y, pageW - margin, y);
+        y += 12;
+
+      // Empty line
+      } else if (line.trim() === '') {
+        y += 6;
+
+      // Bold-only line (acts as a mini header)
+      } else if (line.match(/^\*\*[^*]+\*\*:?\s*$/) || line.match(/^\*\*[^*]+\*\*\s+\*\*/)) {
+        const text = stripBold(line);
+        if (!text.trim()) continue;
+        checkPage(18);
+        doc.setTextColor(13, 13, 13);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        const w = doc.splitTextToSize(text, usableW);
+        doc.text(w, margin, y);
+        y += w.length * 14 + 4;
+
+      // Regular paragraph (with inline link support)
+      } else {
+        const hasLink = line.includes('](');
+        if (!line.trim()) continue;
+        checkPage(16);
+        if (hasLink) {
+          y = renderInlineLinks(line, y);
+        } else {
+          // Handle inline bold
+          const parts = [];
+          const boldRegex = /\*\*(.+?)\*\*/g;
+          let last = 0, m;
+          while ((m = boldRegex.exec(line)) !== null) {
+            if (m.index > last) parts.push({ bold: false, text: line.slice(last, m.index) });
+            parts.push({ bold: true, text: m[1] });
+            last = m.index + m[0].length;
+          }
+          if (last < line.length) parts.push({ bold: false, text: line.slice(last) });
+
+          if (parts.length <= 1) {
+            const text = stripBold(line);
+            const w = doc.splitTextToSize(text, usableW);
+            doc.setTextColor(40, 40, 40);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(10);
+            doc.text(w, margin, y);
+            y += w.length * 14 + 2;
+          } else {
+            // Mixed bold/normal — render as full line with bold stripped for simplicity
+            const text = stripBold(line);
+            const w = doc.splitTextToSize(text, usableW);
+            doc.setTextColor(40, 40, 40);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(10);
+            doc.text(w, margin, y);
+            y += w.length * 14 + 2;
+          }
+        }
+      }
+    }
+
+
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let p = 1; p <= pageCount; p++) {
+      doc.setPage(p);
+      doc.setFillColor(240, 224, 64);
+      doc.rect(0, pageH - 28, pageW, 28, 'F');
+      doc.setTextColor(13, 13, 13); doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
+      doc.text('© DoItYaDamnSelf.com — For personal use only. Not legal advice.', margin, pageH - 11);
+      doc.text(`Page ${p} of ${pageCount}`, pageW - margin, pageH - 11, { align: 'right' });
+    }
+
+    const filename = docTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g,'') + '.pdf';
+    doc.save(filename);
+    showToast('PDF downloaded!', 'success');
+
+  } catch (err) {
+    showToast('PDF error: ' + err.message, 'error');
+    console.error(err);
+  } finally {
+    btn.disabled = false; btn.innerHTML = '⬇ Download PDF';
+  }
+}
+</script>
+</body>
+</html>
