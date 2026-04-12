@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>DoItYaDamnSelf — Guide Generator</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+<style>
+:root{
+  --black:#0d0d0d;--white:#f5f2ee;--yellow:#f0e040;--gray:#1e1e1e;
+  --gray2:#2e2e2e;--gray3:#444;--muted:#888;--border:#333;--red:#e03030;
+  --green:#2a6;--font-display:'Bebas Neue',sans-serif;
+  --font-body:'DM Sans',sans-serif;--font-mono:'DM Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--black);color:var(--white);font-family:var(--font-body);min-height:100vh;overflow-x:hidden;}
+header{border-bottom:2px solid var(--yellow);padding:16px 40px;display:flex;align-items:center;gap:16px;position:sticky;top:0;background:var(--black);z-index:200;}
+.logo{font-family:var(--font-display);font-size:1.8rem;color:var(--yellow);letter-spacing:2px;line-height:1;}
+.logo span{color:var(--white);}
+.tagline{font-size:11px;color:var(--muted);font-family:var(--font-mono);text-transform:uppercase;letter-spacing:1px;}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+.api-status{font-family:var(--font-mono);font-size:11px;padding:4px 10px;border-radius:4px;border:1px solid var(--border);color:var(--muted);}
+.api-status.connected{border-color:var(--green);color:#4d4;}
+.db-badge{font-family:var(--font-mono);font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid var(--border);color:var(--muted);}
+.db-badge.ok{border-color:var(--green);color:#4d4;}
+.tabs{display:flex;border-bottom:2px solid var(--border);background:var(--gray);padding:0 40px;}
+.tab{font-family:var(--font-mono);font-size:12px;text-transform:uppercase;letter-spacing:1.5px;padding:14px 24px;cursor:pointer;color:var(--muted);border:none;background:none;border-bottom:3px solid transparent;margin-bottom:-2px;transition:all .15s;}
+.tab:hover{color:var(--white);}
+.tab.active{color:var(--yellow);border-bottom-color:var(--yellow);}
+.tab-panel{display:none;}
+.tab-panel.active{display:flex;height:calc(100vh - 109px);}
+.left-panel{background:var(--gray);border-right:1px solid var(--border);padding:24px 20px;display:flex;flex-direction:column;gap:18px;overflow-y:auto;width:350px;flex-shrink:0;}
+.lbl{display:block;font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:5px;}
+.wrap{position:relative;}
+.wrap input{width:100%;background:var(--black);border:1px solid var(--border);color:var(--white);font-family:var(--font-mono);font-size:12px;padding:9px 36px 9px 11px;border-radius:6px;outline:none;transition:border-color .2s;}
+.wrap input:focus{border-color:var(--yellow);}
+.tv{position:absolute;right:9px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;}
+input[type=text],input[type=number],textarea,select{width:100%;background:var(--black);border:1px solid var(--border);color:var(--white);font-family:var(--font-body);font-size:13px;padding:8px 11px;border-radius:6px;outline:none;transition:border-color .2s;}
+input:focus,textarea:focus,select:focus{border-color:var(--yellow);}
+select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23666'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;cursor:pointer;}
+select option{background:var(--gray);}
+textarea{resize:vertical;min-height:130px;line-height:1.5;}
+textarea::placeholder{color:var(--gray3);}
+.mpills{display:flex;gap:5px;}
+.mpill{flex:1;font-size:10px;font-family:var(--font-mono);padding:6px 5px;border:1px solid var(--border);border-radius:5px;color:var(--muted);cursor:pointer;background:none;text-align:center;transition:all .15s;}
+.mpill:hover{border-color:var(--yellow);color:var(--yellow);}
+.mpill.active{border-color:#4d4;color:#4d4;background:#1a3a1a;}
+.mpill .pn{display:block;font-size:10px;}
+.mpill .ps{display:block;font-size:9px;color:var(--muted);margin-top:1px;}
+.mpill.active .ps{color:var(--green);}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px;}
+.chip{font-size:10px;font-family:var(--font-mono);padding:3px 9px;border:1px solid var(--border);border-radius:16px;color:var(--muted);cursor:pointer;transition:all .15s;background:none;white-space:nowrap;}
+.chip:hover{border-color:var(--yellow);color:var(--yellow);}
+.srow{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.gen-btn{width:100%;background:var(--yellow);color:var(--black);font-family:var(--font-display);font-size:1.25rem;letter-spacing:2px;padding:13px;border:none;border-radius:6px;cursor:pointer;transition:all .15s;}
+.gen-btn:hover{background:#fff176;transform:translateY(-1px);}
+.gen-btn:active{transform:translateY(0);}
+.gen-btn:disabled{background:var(--gray2);color:var(--muted);cursor:not-allowed;transform:none;}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid var(--black);border-top-color:transparent;border-radius:50%;animation:sp .7s linear infinite;vertical-align:middle;margin-right:5px;}
+@keyframes sp{to{transform:rotate(360deg);}}
+.right-panel{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.ptbar{background:var(--gray);border-bottom:1px solid var(--border);padding:9px 20px;display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.ptlabel{font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-right:auto;}
+.tbtn{background:none;border:1px solid var(--border);color:var(--white);font-family:var(--font-mono);font-size:10px;padding:5px 12px;border-radius:4px;cursor:pointer;transition:all .15s;}
+.tbtn:hover{border-color:var(--yellow);color:var(--yellow);}
+.tbtn:disabled{opacity:.3;cursor:not-allowed;}
+.tbtn.primary{background:var(--yellow);color:var(--black);border-color:var(--yellow);font-weight:600;}
+.tbtn.primary:hover{background:#fff176;}
+.tbtn.success{background:#1a3a1a;color:#4d4;border-color:var(--green);}
+.tbtn.success:hover{background:#2a4a2a;}
+.parea{flex:1;overflow-y:auto;padding:36px;background:var(--black);}
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:14px;color:var(--gray3);text-align:center;}
+.ei{font-size:52px;opacity:.3;}
+.empty h2{font-family:var(--font-display);font-size:1.7rem;color:var(--gray3);letter-spacing:2px;}
+.empty p{font-size:13px;color:var(--muted);max-width:320px;line-height:1.6;}
+.sbar{background:var(--gray2);border:1px solid var(--border);border-radius:7px;padding:12px 16px;margin-bottom:20px;display:none;}
+.sbar.vis{display:flex;align-items:center;gap:10px;}
+.sdot{width:7px;height:7px;border-radius:50%;background:var(--yellow);animation:pu 1s ease-in-out infinite;flex-shrink:0;}
+@keyframes pu{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(0.8)}}
+.stxt{font-family:var(--font-mono);font-size:11px;color:var(--muted);}
+.dp{max-width:740px;margin:0 auto;animation:fi .4s ease;}
+@keyframes fi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.dh{border-bottom:3px solid var(--yellow);padding-bottom:18px;margin-bottom:24px;text-align:center;}
+.dsn{font-family:var(--font-mono);font-size:10px;color:var(--yellow);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px;}
+.dt{font-family:var(--font-display);font-size:2.4rem;line-height:1.05;color:var(--white);letter-spacing:1px;}
+.dc{color:#ccc;line-height:1.8;font-size:14px;}
+.dc h1{font-family:var(--font-display);font-size:1.9rem;color:var(--white);letter-spacing:1px;margin:32px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--border);}
+.dc h2{font-family:var(--font-display);font-size:1.4rem;color:var(--yellow);letter-spacing:1px;margin:26px 0 10px;}
+.dc h3{font-size:.9rem;font-weight:600;color:var(--white);margin:18px 0 6px;text-transform:uppercase;letter-spacing:.5px;font-family:var(--font-mono);}
+.dc p{margin-bottom:12px;}
+.dc ul,.dc ol{margin:0 0 12px 20px;}
+.dc li{margin-bottom:5px;}
+.dc ul ul,.dc ol ul{list-style:circle;margin-top:3px;margin-bottom:3px;}
+.dc ul ul ul{list-style:square;}
+.dc strong{color:var(--white);font-weight:600;}
+.dc a{color:var(--yellow);text-decoration:underline;}
+.dc a:hover{color:#fff176;}
+.dc blockquote{border-left:3px solid var(--yellow);padding:9px 16px;margin:14px 0;background:var(--gray);border-radius:0 5px 5px 0;color:var(--muted);font-style:italic;}
+.dc table{width:100%;border-collapse:collapse;margin:14px 0;font-size:12px;}
+.dc th{background:var(--gray2);color:var(--yellow);font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:1px;padding:8px 11px;text-align:left;border-bottom:2px solid var(--yellow);}
+.dc td{padding:8px 11px;border-bottom:1px solid var(--border);color:#ccc;}
+.dc tr:last-child td{border-bottom:none;}
+.dc hr{border:none;border-top:1px solid var(--border);margin:24px 0;}
+/* Editor tab */
+.econ{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.etbar{background:var(--gray2);border-bottom:1px solid var(--border);padding:7px 14px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;flex-shrink:0;}
+.etbar button{background:none;border:1px solid var(--border);color:var(--white);font-size:11px;padding:4px 9px;border-radius:4px;cursor:pointer;transition:all .15s;font-family:var(--font-body);}
+.etbar button:hover{border-color:var(--yellow);color:var(--yellow);}
+.esep{width:1px;height:18px;background:var(--border);margin:0 3px;}
+.earea{flex:1;overflow-y:auto;padding:36px;}
+.reditor{max-width:740px;margin:0 auto;background:var(--white);color:#111;border-radius:8px;padding:44px;min-height:600px;outline:none;font-family:Georgia,serif;font-size:13.5pt;line-height:1.8;}
+.reditor:focus{box-shadow:0 0 0 2px var(--yellow);}
+.reditor h1{font-size:20pt;font-weight:700;margin:20pt 0 10pt;text-align:center;}
+.reditor h2{font-size:14pt;font-weight:700;margin:18pt 0 7pt;color:#111;background:#222;color:#c5e835;padding:5pt 9pt;}
+.reditor h3{font-size:11pt;font-weight:600;margin:14pt 0 5pt;color:#333;text-transform:uppercase;letter-spacing:.5pt;}
+.reditor p{margin-bottom:10pt;}
+.reditor a{color:#0066CC;text-decoration:underline;}
+.reditor blockquote{border-left:4pt solid #c5e835;padding:7pt 14pt;margin:12pt 0;background:#f8f8f0;color:#555;font-style:italic;}
+.reditor ul,.reditor ol{margin:0 0 10pt 22pt;}
+.reditor li{margin-bottom:3pt;}
+.reditor ul ul{list-style:circle;margin-top:3pt;}
+.reditor ul ul ul{list-style:square;}
+.reditor table{width:100%;border-collapse:collapse;margin:12pt 0;}
+.reditor th{background:#f0f0f0;padding:6pt 10pt;text-align:left;border-bottom:2pt solid #333;font-size:9pt;text-transform:uppercase;}
+.reditor td{padding:6pt 10pt;border-bottom:.5pt solid #ddd;}
+/* Library tab */
+.libpanel{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.libhdr{background:var(--gray);border-bottom:1px solid var(--border);padding:11px 22px;display:flex;align-items:center;gap:11px;flex-shrink:0;}
+.libgrid{flex:1;overflow-y:auto;padding:22px;display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px;align-content:start;}
+.gcard{background:var(--gray);border:1px solid var(--border);border-radius:7px;padding:18px;cursor:pointer;transition:all .15s;}
+.gcard:hover{border-color:var(--yellow);transform:translateY(-2px);}
+.gt{font-family:var(--font-display);font-size:1.05rem;color:var(--white);letter-spacing:1px;margin-bottom:6px;line-height:1.2;}
+.gd{font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-bottom:10px;}
+.gacts{display:flex;gap:7px;flex-wrap:wrap;}
+.gacts button{font-size:10px;font-family:var(--font-mono);padding:3px 9px;border-radius:3px;border:1px solid var(--border);background:none;color:var(--muted);cursor:pointer;transition:all .15s;}
+.gacts button:hover{border-color:var(--yellow);color:var(--yellow);}
+.gacts button.del:hover{border-color:var(--red);color:#f66;}
+.toast{position:fixed;bottom:18px;right:18px;background:var(--gray2);border:1px solid var(--border);color:var(--white);font-family:var(--font-mono);font-size:11px;padding:9px 16px;border-radius:6px;opacity:0;transform:translateY(8px);transition:all .25s;pointer-events:none;z-index:999;}
+.toast.show{opacity:1;transform:translateY(0);}
+.toast.ok{border-color:var(--green);color:#4d4;}
+.toast.err{border-color:var(--red);color:#f66;}
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-track{background:var(--black);}
+::-webkit-scrollbar-thumb{background:var(--gray3);border-radius:3px;}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">DoIt<span>Ya</span>DamnSelf</div>
+  <div class="tagline">Guide Generator</div>
+  <div class="header-right">
+    <div class="db-badge" id="dbBadge">⬤ Dropbox</div>
+    <div class="api-status" id="apiStatus">⬤ No API Key</div>
+  </div>
+</header>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('generate')">⚡ Generate</button>
+  <button class="tab" onclick="switchTab('editor')">✏️ Editor</button>
+  <button class="tab" onclick="switchTab('library')">📚 Library (<span id="libCount">0</span>)</button>
+</div>
+
+<!-- TAB 1: GENERATE -->
+<div class="tab-panel active" id="tab-generate">
+  <div class="left-panel">
+    <div>
+      <span class="lbl">Claude API Key</span>
+      <div class="wrap"><input type="password" id="apiKey" placeholder="sk-ant-api03-..." autocomplete="off"/><button class="tv" onclick="toggleVis('apiKey')">👁</button></div>
+    </div>
+    <div>
+      <span class="lbl">Dropbox Token (for saving guides)</span>
+      <div class="wrap"><input type="password" id="dbToken" placeholder="Dropbox access token..." autocomplete="off"/><button class="tv" onclick="toggleVis('dbToken')">👁</button></div>
+    </div>
+    <div>
+      <span class="lbl">Model</span>
+      <div class="mpills">
+        <button class="mpill active" data-model="claude-sonnet-4-5" onclick="selModel(this)"><span class="pn">Sonnet</span><span class="ps">~$0.08 · Best</span></button>
+        <button class="mpill" data-model="claude-opus-4-5" onclick="selModel(this)"><span class="pn">Opus</span><span class="ps">~$0.25 · Max</span></button>
+        <button class="mpill" data-model="claude-haiku-4-5-20251001" onclick="selModel(this)"><span class="pn">Haiku</span><span class="ps">~$0.02 · Fast</span></button>
+      </div>
+    </div>
+    <div>
+      <span class="lbl">What guide do you want to create?</span>
+      <textarea id="promptInput" placeholder="e.g. Create a detailed step-by-step guide on how to do a legal name change in California..."></textarea>
+      <div class="chips">
+        <button class="chip" onclick="useChip('legal name change in California')">CA Name Change</button>
+        <button class="chip" onclick="useChip('file small claims court in Texas')">TX Small Claims</button>
+        <button class="chip" onclick="useChip('get a US passport for the first time')">US Passport</button>
+        <button class="chip" onclick="useChip('register an LLC in Florida')">FL LLC</button>
+        <button class="chip" onclick="useChip('dispute a credit report error')">Credit Dispute</button>
+        <button class="chip" onclick="useChip('apply for FAFSA financial aid')">FAFSA</button>
+      </div>
+    </div>
+    <div class="srow">
+      <div><span class="lbl">Detail Level</span>
+        <select id="detailLevel"><option value="standard">Standard</option><option value="detailed" selected>Very Detailed</option><option value="exhaustive">Exhaustive</option></select>
+      </div>
+      <div><span class="lbl">State</span>
+        <select id="docState">
+          <option value="">Any / Federal</option>
+          <option>Alabama</option><option>Alaska</option><option>Arizona</option><option>Arkansas</option>
+          <option>California</option><option>Colorado</option><option>Connecticut</option><option>Delaware</option>
+          <option>Florida</option><option>Georgia</option><option>Hawaii</option><option>Idaho</option>
+          <option>Illinois</option><option>Indiana</option><option>Iowa</option><option>Kansas</option>
+          <option>Kentucky</option><option>Louisiana</option><option>Maine</option><option>Maryland</option>
+          <option>Massachusetts</option><option>Michigan</option><option>Minnesota</option><option>Mississippi</option>
+          <option>Missouri</option><option>Montana</option><option>Nebraska</option><option>Nevada</option>
+          <option>New Hampshire</option><option>New Jersey</option><option>New Mexico</option><option>New York</option>
+          <option>North Carolina</option><option>North Dakota</option><option>Ohio</option><option>Oklahoma</option>
+          <option>Oregon</option><option>Pennsylvania</option><option>Rhode Island</option><option>South Carolina</option>
+          <option>South Dakota</option><option>Tennessee</option><option>Texas</option><option>Utah</option>
+          <option>Vermont</option><option>Virginia</option><option>Washington</option><option>West Virginia</option>
+          <option>Wisconsin</option><option>Wyoming</option>
+        </select>
+      </div>
+    </div>
+    <button class="gen-btn" id="genBtn" onclick="generateGuide()">GENERATE GUIDE</button>
+  </div>
+
+  <div class="right-panel">
+    <div class="ptbar">
+      <span class="ptlabel">Preview</span>
+      <button class="tbtn" id="editBtn" onclick="openInEditor()" disabled>✏️ Open in Editor</button>
+      <button class="tbtn primary" id="dlWordBtn" onclick="downloadWord()" disabled>📄 Download Word</button>
+      <button class="tbtn success" id="saveBtn" onclick="saveToLibrary()" disabled>💾 Save to Library</button>
+    </div>
+    <div class="parea">
+      <div class="empty" id="emptyState">
+        <div class="ei">📋</div>
+        <h2>NO GUIDE YET</h2>
+        <p>Enter your API key, describe the guide, and hit Generate. Then open in the Editor to make changes before downloading.</p>
+      </div>
+      <div class="sbar" id="sbar"><div class="sdot"></div><div class="stxt" id="stxt">Connecting...</div></div>
+      <div id="docOut"></div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 2: EDITOR -->
+<div class="tab-panel" id="tab-editor">
+  <div style="display:flex;flex:1;overflow:hidden;">
+  <!-- AI Assistant Panel -->
+  <div id="aiPanel" style="width:300px;flex-shrink:0;background:var(--gray);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;">
+    <div style="padding:16px 16px 12px;border-bottom:1px solid var(--border);flex-shrink:0;">
+      <div style="font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--yellow);margin-bottom:4px;">⚡ AI Editor Assistant</div>
+      <div style="font-size:11px;color:var(--muted);line-height:1.5;">Tell Claude what edits to make and it will update the document for you.</div>
+    </div>
+    <!-- Quick prompts -->
+    <div style="padding:12px 16px;border-bottom:1px solid var(--border);flex-shrink:0;">
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;">Quick Edits</div>
+      <div style="display:flex;flex-direction:column;gap:5px;">
+        <button onclick="useAIPrompt(this.textContent)" style="background:var(--gray2);border:1px solid var(--border);color:var(--muted);font-size:11px;padding:6px 10px;border-radius:4px;cursor:pointer;text-align:left;transition:all .15s;" onmouseover="this.style.borderColor='var(--yellow)';this.style.color='var(--white)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">Make the tone more casual and friendly</button>
+        <button onclick="useAIPrompt(this.textContent)" style="background:var(--gray2);border:1px solid var(--border);color:var(--muted);font-size:11px;padding:6px 10px;border-radius:4px;cursor:pointer;text-align:left;transition:all .15s;" onmouseover="this.style.borderColor='var(--yellow)';this.style.color='var(--white)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">Add more detail to the step-by-step instructions</button>
+        <button onclick="useAIPrompt(this.textContent)" style="background:var(--gray2);border:1px solid var(--border);color:var(--muted);font-size:11px;padding:6px 10px;border-radius:4px;cursor:pointer;text-align:left;transition:all .15s;" onmouseover="this.style.borderColor='var(--yellow)';this.style.color='var(--white)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">Make the intro paragraph more compelling</button>
+        <button onclick="useAIPrompt(this.textContent)" style="background:var(--gray2);border:1px solid var(--border);color:var(--muted);font-size:11px;padding:6px 10px;border-radius:4px;cursor:pointer;text-align:left;transition:all .15s;" onmouseover="this.style.borderColor='var(--yellow)';this.style.color='var(--white)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">Shorten the guide — remove any filler content</button>
+        <button onclick="useAIPrompt(this.textContent)" style="background:var(--gray2);border:1px solid var(--border);color:var(--muted);font-size:11px;padding:6px 10px;border-radius:4px;cursor:pointer;text-align:left;transition:all .15s;" onmouseover="this.style.borderColor='var(--yellow)';this.style.color='var(--white)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">Fix formatting — fix bullets, headers, and spacing</button>
+        <button onclick="useAIPrompt(this.textContent)" style="background:var(--gray2);border:1px solid var(--border);color:var(--muted);font-size:11px;padding:6px 10px;border-radius:4px;cursor:pointer;text-align:left;transition:all .15s;" onmouseover="this.style.borderColor='var(--yellow)';this.style.color='var(--white)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">Add warnings and pro tips throughout</button>
+        <button onclick="useAIPrompt(this.textContent)" style="background:var(--gray2);border:1px solid var(--border);color:var(--muted);font-size:11px;padding:6px 10px;border-radius:4px;cursor:pointer;text-align:left;transition:all .15s;" onmouseover="this.style.borderColor='var(--yellow)';this.style.color='var(--white)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">Check for accuracy and update any outdated info</button>
+      </div>
+    </div>
+    <!-- Custom prompt -->
+    <div style="padding:12px 16px;display:flex;flex-direction:column;gap:8px;flex:1;overflow-y:auto;">
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Custom Edit Request</div>
+      <textarea id="aiEditPrompt" placeholder="Describe what you want changed, added, or improved..." style="flex:1;min-height:100px;max-height:160px;background:var(--black);border:1px solid var(--border);color:var(--white);font-family:var(--font-body);font-size:12px;padding:10px;border-radius:6px;outline:none;resize:vertical;line-height:1.5;"></textarea>
+      <button onclick="applyAIEdit()" id="aiEditBtn" style="width:100%;background:var(--yellow);color:var(--black);font-family:var(--font-display);font-size:1.1rem;letter-spacing:2px;padding:11px;border:none;border-radius:6px;cursor:pointer;transition:all .15s;">APPLY EDIT</button>
+      <div id="aiEditStatus" style="display:none;font-family:var(--font-mono);font-size:10px;color:var(--muted);text-align:center;padding:4px;">Processing...</div>
+      <!-- History -->
+      <div id="editHistory" style="margin-top:4px;"></div>
+    </div>
+  </div>
+  <div class="econ">
+    <div class="etbar">
+      <button onclick="ec('bold')"><b>B</b></button>
+      <button onclick="ec('italic')"><i>I</i></button>
+      <button onclick="ec('underline')"><u>U</u></button>
+      <div class="esep"></div>
+      <button onclick="ec('formatBlock','h1')">H1</button>
+      <button onclick="ec('formatBlock','h2')">H2</button>
+      <button onclick="ec('formatBlock','h3')">H3</button>
+      <button onclick="ec('formatBlock','p')">P</button>
+      <div class="esep"></div>
+      <button onclick="ec('insertUnorderedList')">• List</button>
+      <button onclick="ec('insertOrderedList')">1. List</button>
+      <button onclick="ec('indent')">→ Indent</button>
+      <button onclick="ec('outdent')">← Outdent</button>
+      <div class="esep"></div>
+      <button onclick="insLink()">🔗 Link</button>
+      <button onclick="ec('formatBlock','blockquote')">❝ Callout</button>
+      <div class="esep"></div>
+      <button onclick="ec('undo')">↩</button>
+      <button onclick="ec('redo')">↪</button>
+      <div class="esep"></div>
+      <button onclick="dlWordEditor()" style="background:var(--yellow);color:var(--black);border-color:var(--yellow);font-weight:600;">📄 Download Word</button>
+      <button onclick="dlPDFEditor()" style="background:var(--gray2);">📑 Download PDF</button>
+      <button onclick="saveEditorLib()" style="background:#1a3a1a;color:#4d4;border-color:var(--green);">💾 Save to Library</button>
+    </div>
+    <div class="earea">
+      <div class="reditor" id="reditor" contenteditable="true" spellcheck="true">
+        <p style="text-align:center;color:#aaa;font-style:italic;font-size:12pt;">Generate a guide first, then click "Open in Editor" to edit it here.</p>
+      </div>
+    </div>
+  </div>
+  </div><!-- end ai+editor flex wrapper -->
+</div>
+
+<!-- TAB 3: LIBRARY -->
+<div class="tab-panel" id="tab-library">
+  <div class="libpanel">
+    <div class="libhdr">
+      <span class="ptlabel">Completed Guides</span>
+      <button class="tbtn" onclick="loadLib()">↓ Sync from Dropbox</button>
+    </div>
+    <div class="libgrid" id="libgrid">
+      <div style="grid-column:1/-1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px;gap:14px;text-align:center;color:var(--gray3);">
+        <div style="font-size:52px;opacity:.3;">📚</div>
+        <h2 style="font-family:var(--font-display);font-size:1.6rem;letter-spacing:2px;">NO SAVED GUIDES</h2>
+        <p style="font-size:13px;color:var(--muted);max-width:280px;line-height:1.6;">Generate a guide and click Save to Library. Syncs to Dropbox automatically.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let md='', docTitle='', selMod='claude-sonnet-4-5', lib=[];
+const DB_PATH='/diyds-library.json';
+
+window.addEventListener('DOMContentLoaded',()=>{
+  setTimeout(()=>{
+    const k=localStorage.getItem('diyds_claude_key');
+    if(k){document.getElementById('apiKey').value=k;updApi(k.startsWith('sk-ant'));}
+    const d=localStorage.getItem('diyds_db_token');
+    if(d){document.getElementById('dbToken').value=d;updDb(true);loadLib();}
+  }, 100);
+});
+document.getElementById('apiKey').addEventListener('input',function(){
+  localStorage.setItem('diyds_claude_key',this.value.trim());
+  updApi(this.value.trim().startsWith('sk-ant'));
+});
+document.getElementById('dbToken').addEventListener('input',function(){
+  localStorage.setItem('diyds_db_token',this.value.trim());
+  updDb(this.value.trim().length>20);
+});
+function updApi(ok){const e=document.getElementById('apiStatus');e.textContent=ok?'⬤ API Key Set':'⬤ No API Key';e.className='api-status'+(ok?' connected':'');}
+function updDb(ok){const e=document.getElementById('dbBadge');e.textContent=ok?'⬤ Dropbox':'⬤ No Dropbox';e.className='db-badge'+(ok?' ok':'');}
+function toggleVis(id){const i=document.getElementById(id);i.type=i.type==='password'?'text':'password';}
+function selModel(b){document.querySelectorAll('.mpill').forEach(p=>p.classList.remove('active'));b.classList.add('active');selMod=b.dataset.model;}
+function useChip(t){document.getElementById('promptInput').value=`Create a step-by-step, very detailed guide on how to ${t}. Include all required forms, fees, processing times, tips, warnings, and any official government or agency links.`;}
+function switchTab(n){
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['generate','editor','library'][i]===n));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id===`tab-${n}`));
+  if(n==='library')renderLib();
+}
+function setSt(t){document.getElementById('sbar').className='sbar vis';document.getElementById('stxt').textContent=t;}
+function hideSt(){document.getElementById('sbar').className='sbar';}
+function toast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show '+type;setTimeout(()=>t.className='toast',3500);}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+async function generateGuide(){
+  const apiKey=document.getElementById('apiKey').value.trim();
+  const prompt=document.getElementById('promptInput').value.trim();
+  const detail=document.getElementById('detailLevel').value;
+  const state=document.getElementById('docState').value;
+  if(!apiKey||!apiKey.startsWith('sk-ant')){toast('Enter your Claude API key first','err');return;}
+  if(!prompt){toast('Describe the guide you want to create','err');return;}
+  const btn=document.getElementById('genBtn');
+  btn.disabled=true;btn.innerHTML='<span class="spin"></span>GENERATING...';
+  ['editBtn','dlWordBtn','saveBtn'].forEach(id=>document.getElementById(id).disabled=true);
+  document.getElementById('emptyState').style.display='none';
+  document.getElementById('docOut').innerHTML='';
+  md='';
+  const dm={standard:'thorough and clear',detailed:'very detailed with every sub-step explained',exhaustive:'exhaustive — leave absolutely nothing out, cover every edge case, tip, and variation'};
+  const sn=state?` Focus specifically on ${state} state requirements, fees, forms, and official resources.`:'';
+  const fp=`You are an expert guide writer for DoItYaDamnSelf.com — a website that helps everyday people navigate complex bureaucratic, legal, and administrative processes without hiring professionals.\n\nWrite a guide that is ${dm[detail]}.${sn}\n\nRequirements:\n- Plain, direct language — not condescending, not overly casual\n- Clear numbered steps throughout\n- Exact fees, form names/numbers, and processing times where known\n- ALL links must use markdown format: [Link Text](https://url.com) — never use bare URLs\n- Sub-items must be indented with two spaces then a dash: "  - sub item"\n- A "What You'll Need" checklist using "- [ ] item" format\n- A "Common Mistakes to Avoid" section\n- A "Total Cost Estimate" table\n- A "Time Estimate" for the whole process\n- A "Helpful Resources" section with [Link Text](url) links\n\nFormat in Markdown:\n- # for title\n- ## for major sections\n- ### for sub-sections\n- Tables for costs\n- > for warnings and pro tips\n- Numbered lists for steps\n- Bullet points for non-sequential items\n- "  - " (two spaces + dash) for sub-items under bullets or steps\n\nWrite the guide for:\n${prompt}\n\nStructure:\n1. # [Title]\n2. 1-2 sentence intro (will be centered on the page)\n3. ## What You'll Need\n4. ## Time & Cost Overview\n5. ## Step-by-Step Instructions\n6. ## Common Mistakes to Avoid\n7. ## Helpful Resources\n\nBe specific, accurate, and genuinely helpful.`;
+  try{
+    setSt('Claude is researching and writing your guide — this takes 20–40 seconds...');
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:selMod,max_tokens:16000,messages:[{role:'user',content:fp}]})
+    });
+    if(!res.ok){const e=await res.json();const m=e.error?.message||`Error ${res.status}`;if(res.status===401)throw new Error('Invalid API key');if(res.status===429)throw new Error('Rate limit — wait a moment');throw new Error(m);}
+    const data=await res.json();
+    const text=data.content?.[0]?.text;
+    if(!text)throw new Error('No content returned. Try again.');
+    md=text.trim();
+    const tm=md.match(/^#\s+(.+)/m);
+    docTitle=tm?tm[1]:'DIY Guide';
+    hideSt();
+    renderPreview(md);
+    ['editBtn','dlWordBtn','saveBtn'].forEach(id=>document.getElementById(id).disabled=false);
+    toast('Guide generated!','ok');
+  }catch(err){
+    hideSt();document.getElementById('emptyState').style.display='flex';
+    toast('Error: '+err.message,'err');
+  }finally{btn.disabled=false;btn.innerHTML='GENERATE GUIDE';}
+}
+
+function renderPreview(m){
+  const bodyMd=m.replace(/^#\s+.+\n?/m,'').trim();
+  const html=marked.parse(bodyMd);
+  // Wrap first paragraph in centered intro style
+  const styledHtml=html.replace(/^<p>(.*?)<\/p>/,'<p style="text-align:center;color:#aaa;font-style:italic;margin-bottom:20px;">$1</p>');
+  document.getElementById('docOut').innerHTML=`<div class="dp"><div class="dh"><div class="dsn">DoItYaDamnSelf.com</div><div class="dt">${esc(docTitle)}</div></div><div class="dc">${styledHtml}</div></div>`;
+}
+
+function openInEditor(){
+  if(!md)return;
+  const bodyMd=md.replace(/^#\s+.+\n?/m,'').trim();
+  const html=marked.parse(bodyMd);
+  const styledHtml=html.replace(/^<p>(.*?)<\/p>/,'<p style="text-align:center;color:#666;font-style:italic;">$1</p>');
+  document.getElementById('reditor').innerHTML=`<h1 style="text-align:center;">${esc(docTitle)}</h1><p style="text-align:center;font-size:10pt;color:#999;margin-bottom:20pt;font-style:italic;">DoItYaDamnSelf.com</p>${styledHtml}`;
+  switchTab('editor');
+  toast('Guide opened in editor!','ok');
+}
+
+function ec(cmd,val=null){document.getElementById('reditor').focus();document.execCommand(cmd,false,val);}
+function insLink(){
+  const sel=window.getSelection();
+  const txt=sel&&sel.toString()?sel.toString():prompt('Link text:');
+  if(!txt)return;
+  const url=prompt('URL (include https://):');
+  if(!url)return;
+  document.getElementById('reditor').focus();
+  document.execCommand('insertHTML',false,`<a href="${url}" target="_blank">${txt}</a>`);
+}
+
+function buildWordHtml(htmlContent,title){
+  return `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="utf-8"/><title>${esc(title)}</title>
+<style>
+@page{margin:1in;size:letter;}
+body{font-family:Arial,sans-serif;font-size:11pt;color:#111;line-height:1.6;}
+h1{font-size:20pt;font-weight:bold;text-align:center;margin:20pt 0 10pt;border-bottom:3pt solid #c5e835;padding-bottom:6pt;}
+h2{font-size:13pt;font-weight:bold;margin:18pt 0 7pt;background:#222;color:#c5e835;padding:5pt 9pt;}
+h3{font-size:11pt;font-weight:bold;margin:13pt 0 5pt;color:#333;text-transform:uppercase;letter-spacing:.5pt;}
+p{margin:0 0 9pt;}
+p.intro{text-align:center;color:#555;font-style:italic;margin-bottom:14pt;}
+ul{margin:0 0 9pt 20pt;}ol{margin:0 0 9pt 20pt;}
+li{margin-bottom:3pt;}
+ul ul{list-style-type:circle;margin-top:3pt;}
+ul ul ul{list-style-type:square;}
+a{color:#0066CC;text-decoration:underline;}
+blockquote{border-left:4pt solid #c5e835;padding:6pt 12pt;margin:10pt 0;background:#f8f8f0;color:#444;font-style:italic;}
+table{width:100%;border-collapse:collapse;margin:10pt 0;font-size:10pt;}
+th{background:#333;color:#c5e835;padding:5pt 9pt;text-align:left;font-size:9pt;text-transform:uppercase;}
+td{padding:5pt 9pt;border-bottom:.5pt solid #ddd;}
+.site{text-align:center;font-size:8pt;color:#999;text-transform:uppercase;letter-spacing:2pt;margin-bottom:5pt;font-weight:bold;}
+.disc{text-align:center;font-size:8pt;color:#999;margin-top:20pt;border-top:.5pt solid #ddd;padding-top:6pt;}
+</style></head>
+<body>
+<div class="site">DoItYaDamnSelf.com</div>
+${htmlContent}
+<div class="disc">© DoItYaDamnSelf.com — For personal use only. Not legal advice.</div>
+</body></html>`;
+}
+
+function downloadWord(){
+  if(!md)return;
+  const bodyMd=md.replace(/^#\s+.+\n?/m,'').trim();
+  let html=marked.parse(bodyMd);
+  html=html.replace(/^<p>(.*?)<\/p>/,'<p class="intro">$1</p>');
+  const blob=new Blob([buildWordHtml(`<h1>${esc(docTitle)}</h1>${html}`,docTitle)],{type:'application/msword'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=docTitle.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'')+'.doc';
+  a.click();URL.revokeObjectURL(a.href);
+  toast('Word document downloaded!','ok');
+}
+
+function dlWordEditor(){
+  const content=document.getElementById('reditor').innerHTML;
+  const tmp=document.createElement('div');tmp.innerHTML=content;
+  const title=tmp.querySelector('h1')?.textContent||docTitle||'guide';
+  const blob=new Blob([buildWordHtml(content,title)],{type:'application/msword'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=title.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'')+'.doc';
+  a.click();URL.revokeObjectURL(a.href);
+  toast('Word document downloaded!','ok');
+}
+
+function dlPDFEditor(){
+  if(md){dlPDF();}else{toast('Use Download Word for best results from the editor','');}
+}
+
+async function dlPDF(){
+  if(!md)return;
+  try{
+    const{jsPDF}=window.jspdf;
+    const doc=new jsPDF({unit:'pt',format:'letter'});
+    const pW=doc.internal.pageSize.getWidth(),pH=doc.internal.pageSize.getHeight();
+    const mg=56,uW=pW-mg*2;let y=mg,inIntro=true;
+    function chkPg(n=20){if(y+n>pH-mg){doc.addPage();y=mg;}}
+    function sb(t){return t.replace(/\*\*(.+?)\*\*/g,'$1').replace(/\*(.+?)\*/g,'$1');}
+    // Header
+    doc.setFillColor(240,224,64);doc.rect(0,0,pW,72,'F');
+    doc.setTextColor(13,13,13);doc.setFont('helvetica','bold');doc.setFontSize(28);
+    doc.text('DOITYADAMNSELF.COM',mg,38);
+    doc.setFont('helvetica','normal');doc.setFontSize(10);
+    doc.text('Your DIY Guide to Getting It Done',mg,56);
+    y=100;
+    doc.setFont('helvetica','bold');doc.setFontSize(22);
+    const tl=doc.splitTextToSize(docTitle.toUpperCase(),uW);
+    tl.forEach((l,i)=>{const w=doc.getTextWidth(l);doc.text(l,mg+(uW-w)/2,y+i*28);});
+    y+=tl.length*28+10;
+    doc.setDrawColor(240,224,64);doc.setLineWidth(2);
+    doc.line(mg,y,pW-mg,y);y+=20;
+    const lines=md.split('\n');
+    for(let i=0;i<lines.length;i++){
+      const ln=lines[i];
+      if(ln.match(/^#\s+/)&&i<5)continue;
+      if(ln.match(/^##\s+/)){
+        inIntro=false;
+        const tx=ln.replace(/^##\s+/,'').toUpperCase();
+        chkPg(44);y+=14;
+        doc.setFillColor(30,30,30);doc.rect(mg-8,y-14,uW+16,26,'F');
+        doc.setTextColor(240,224,64);doc.setFont('helvetica','bold');doc.setFontSize(11);
+        doc.text(tx,mg,y);y+=20;doc.setTextColor(30,30,30);
+      }else if(ln.match(/^###\s+/)){
+        inIntro=false;
+        const tx=sb(ln.replace(/^###\s+/,''));chkPg(28);y+=10;
+        doc.setTextColor(13,13,13);doc.setFont('helvetica','bold');doc.setFontSize(11);
+        const w=doc.splitTextToSize(tx,uW-10);doc.text(w,mg+4,y);y+=w.length*14+4;
+      }else if(ln.match(/^>\s+/)){
+        const tx=sb(ln.replace(/^>\s+/,''));chkPg(36);y+=6;
+        const w=doc.splitTextToSize(tx,uW-28);
+        const bh=w.length*13+18;
+        doc.setFillColor(46,46,46);doc.rect(mg,y-12,uW,bh,'F');
+        doc.setDrawColor(240,224,64);doc.setLineWidth(3);doc.line(mg,y-12,mg,y-12+bh);
+        doc.setTextColor(220,220,150);doc.setFont('helvetica','italic');doc.setFontSize(10);
+        doc.text(w,mg+14,y);y+=bh+6;
+      }else if(ln.match(/^\s*-\s+\[\s*\]\s+/)){
+        const tx=sb(ln.replace(/^\s*-\s+\[\s*\]\s+/,''));
+        const w=doc.splitTextToSize(tx,uW-28);chkPg(w.length*13+6);
+        doc.setDrawColor(100,100,100);doc.setLineWidth(0.8);doc.rect(mg+2,y-9,10,10);
+        doc.setTextColor(60,60,60);doc.setFont('helvetica','normal');doc.setFontSize(10);
+        doc.text(w,mg+18,y);y+=w.length*13+5;
+      }else if(ln.match(/^\s{2,}[-*+]\s+/)){
+        // Sub-bullet — indented, smaller, circle marker
+        const tx=sb(ln.replace(/^\s+[-*+]\s+/,'').replace(/\[([^\]]+)\]\([^)]+\)/g,'$1'));
+        const w=doc.splitTextToSize(tx,uW-44);chkPg(w.length*12+4);
+        doc.setFillColor(150,150,150);doc.circle(mg+26,y-3,1.5,'F');
+        doc.setTextColor(80,80,80);doc.setFont('helvetica','normal');doc.setFontSize(9.5);
+        doc.text(w,mg+34,y);y+=w.length*12+4;
+      }else if(ln.match(/^\s*[-*+]\s+/)){
+        const tx=sb(ln.replace(/^\s*[-*+]\s+/,'').replace(/\[([^\]]+)\]\([^)]+\)/g,'$1'));
+        const w=doc.splitTextToSize(tx,uW-22);chkPg(w.length*13+4);
+        doc.setFillColor(240,224,64);doc.circle(mg+6,y-3,2,'F');
+        doc.setTextColor(60,60,60);doc.setFont('helvetica','normal');doc.setFontSize(10);
+        doc.text(w,mg+16,y);y+=w.length*13+4;
+      }else if(ln.match(/^\d+\.\d+\s+/)){
+        const nm=ln.match(/^(\d+\.\d+)\s+(.*)/);if(!nm)continue;
+        const tx=sb(nm[2]).replace(/\[([^\]]+)\]\([^)]+\)/g,'$1');
+        const w=doc.splitTextToSize(tx,uW-36);chkPg(w.length*13+4);
+        doc.setFont('helvetica','bold');doc.setTextColor(160,130,0);doc.setFontSize(10);
+        doc.text(nm[1],mg,y);
+        doc.setFont('helvetica','normal');doc.setTextColor(60,60,60);
+        doc.text(w,mg+34,y);y+=w.length*13+4;
+      }else if(ln.match(/^\d+\.\s+/)){
+        const nm=ln.match(/^(\d+)\.\s+(.*)/);if(!nm)continue;
+        const tx=sb(nm[2]).replace(/\[([^\]]+)\]\([^)]+\)/g,'$1');
+        const w=doc.splitTextToSize(tx,uW-28);chkPg(w.length*13+4);
+        doc.setFont('helvetica','bold');doc.setTextColor(160,130,0);doc.setFontSize(10);
+        doc.text(nm[1]+'.',mg,y);
+        doc.setFont('helvetica','normal');doc.setTextColor(60,60,60);
+        doc.text(w,mg+24,y);y+=w.length*13+4;
+      }else if(ln.match(/^\|/)){
+        const cells=ln.split('|').filter(c=>c.trim()!=='');
+        if(ln.match(/^[\|\s\-:]+$/)){y+=2;continue;}
+        chkPg(22);
+        const isHdr=lines[i+1]&&lines[i+1].match(/^[\|\s\-:]+$/);
+        const cW=uW/cells.length;
+        if(isHdr){doc.setFillColor(46,46,46);doc.rect(mg,y-12,uW,22,'F');doc.setTextColor(240,224,64);doc.setFont('helvetica','bold');doc.setFontSize(9);}
+        else{doc.setDrawColor(60,60,60);doc.setLineWidth(0.5);doc.line(mg,y+6,pW-mg,y+6);doc.setTextColor(60,60,60);doc.setFont('helvetica','normal');doc.setFontSize(9);}
+        cells.forEach((c,ci)=>doc.text(doc.splitTextToSize(sb(c.trim()),cW-8),mg+ci*cW+4,y));
+        y+=20;
+      }else if(ln.match(/^---+$/)){
+        chkPg(20);y+=8;doc.setDrawColor(60,60,60);doc.setLineWidth(0.5);doc.line(mg,y,pW-mg,y);y+=12;
+      }else if(ln.trim()===''){
+        y+=6;
+      }else{
+        const tx=sb(ln).replace(/\[([^\]]+)\]\([^)]+\)/g,'$1');
+        if(!tx.trim())continue;
+        const w=doc.splitTextToSize(tx,uW);chkPg(w.length*14);
+        doc.setTextColor(40,40,40);doc.setFont('helvetica','normal');doc.setFontSize(10);
+        if(inIntro){w.forEach((l,i)=>{const lw=doc.getTextWidth(l);doc.text(l,mg+(uW-lw)/2,y+i*14);});}
+        else{doc.text(w,mg,y);}
+        y+=w.length*14+2;
+      }
+    }
+    const pc=doc.internal.getNumberOfPages();
+    for(let p=1;p<=pc;p++){
+      doc.setPage(p);doc.setFillColor(240,224,64);doc.rect(0,pH-28,pW,28,'F');
+      doc.setTextColor(13,13,13);doc.setFont('helvetica','normal');doc.setFontSize(8);
+      doc.text('© DoItYaDamnSelf.com — For personal use only. Not legal advice.',mg,pH-11);
+      doc.text(`Page ${p} of ${pc}`,pW-mg,pH-11,{align:'right'});
+    }
+    const fn=docTitle.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'')+'.pdf';
+    doc.save(fn);toast('PDF downloaded!','ok');
+  }catch(e){toast('PDF error: '+e.message,'err');}
+}
+
+async function saveToLibrary(){
+  if(!md)return;
+  const entry={id:Date.now(),title:docTitle,markdown:md,created:new Date().toISOString(),model:selMod};
+  lib.push(entry);
+  await syncLib();
+  document.getElementById('libCount').textContent=lib.length;
+  toast('Saved to library!','ok');
+}
+
+async function saveEditorLib(){
+  const content=document.getElementById('reditor').innerHTML;
+  const tmp=document.createElement('div');tmp.innerHTML=content;
+  const title=tmp.querySelector('h1')?.textContent||docTitle||'Untitled';
+  const entry={id:Date.now(),title,html:content,markdown:md,created:new Date().toISOString(),edited:true};
+  const ex=lib.findIndex(g=>g.title===title);
+  if(ex>=0)lib[ex]=entry;else lib.push(entry);
+  await syncLib();
+  document.getElementById('libCount').textContent=lib.length;
+  toast('Saved to library!','ok');
+}
+
+async function syncLib(){
+  const token=document.getElementById('dbToken').value.trim();
+  if(!token)return;
+  try{
+    await fetch('https://content.dropboxapi.com/2/files/upload',{
+      method:'POST',
+      headers:{'Authorization':`Bearer ${token}`,'Dropbox-API-Arg':JSON.stringify({path:DB_PATH,mode:'overwrite',autorename:false,mute:true}),'Content-Type':'application/octet-stream'},
+      body:JSON.stringify(lib,null,2)
+    });
+  }catch(e){console.error('Dropbox sync:',e);}
+}
+
+async function loadLib(){
+  const token=document.getElementById('dbToken').value.trim();
+  if(!token)return;
+  try{
+    const res=await fetch('https://content.dropboxapi.com/2/files/download',{
+      method:'POST',
+      headers:{'Authorization':`Bearer ${token}`,'Dropbox-API-Arg':JSON.stringify({path:DB_PATH})}
+    });
+    if(res.status===409)return;
+    if(!res.ok)return;
+    const data=await res.json();
+    lib=Array.isArray(data)?data:[];
+    document.getElementById('libCount').textContent=lib.length;
+    renderLib();updDb(true);
+  }catch(e){updDb(true);}
+}
+
+function renderLib(){
+  const g=document.getElementById('libgrid');
+  if(lib.length===0){
+    g.innerHTML=`<div style="grid-column:1/-1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px;gap:14px;text-align:center;color:var(--gray3);"><div style="font-size:52px;opacity:.3;">📚</div><h2 style="font-family:var(--font-display);font-size:1.6rem;letter-spacing:2px;">NO SAVED GUIDES</h2><p style="font-size:13px;color:var(--muted);max-width:280px;line-height:1.6;">Generate a guide and click Save to Library. Syncs to Dropbox automatically.</p></div>`;
+    return;
+  }
+  g.innerHTML=lib.slice().reverse().map(guide=>`
+    <div class="gcard">
+      <div class="gt">${esc(guide.title)}</div>
+      <div class="gd">${new Date(guide.created).toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'})}${guide.edited?' · Edited':''}</div>
+      <div class="gacts">
+        <button onclick="openLibGuide(${guide.id})">✏️ Edit</button>
+        <button onclick="libWord(${guide.id})">📄 Word</button>
+        <button onclick="libPDF(${guide.id})">📑 PDF</button>
+        <button class="del" onclick="delGuide(${guide.id})">✕</button>
+      </div>
+    </div>`).join('');
+}
+
+function openLibGuide(id){
+  const guide=lib.find(g=>g.id===id);if(!guide)return;
+  docTitle=guide.title;md=guide.markdown||'';
+  const ed=document.getElementById('reditor');
+  if(guide.html){ed.innerHTML=guide.html;}
+  else if(guide.markdown){
+    const bodyMd=guide.markdown.replace(/^#\s+.+\n?/m,'').trim();
+    const html=marked.parse(bodyMd);
+    const styled=html.replace(/^<p>(.*?)<\/p>/,'<p style="text-align:center;color:#666;font-style:italic;">$1</p>');
+    ed.innerHTML=`<h1 style="text-align:center;">${esc(guide.title)}</h1>${styled}`;
+  }
+  switchTab('editor');toast('Guide opened in editor!','ok');
+}
+
+function libWord(id){
+  const guide=lib.find(g=>g.id===id);if(!guide)return;
+  const html=guide.html||(guide.markdown?marked.parse(guide.markdown.replace(/^#\s+.+\n?/m,'').trim()):'');
+  const blob=new Blob([buildWordHtml(`<h1>${esc(guide.title)}</h1>${html}`,guide.title)],{type:'application/msword'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=guide.title.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'')+'.doc';
+  a.click();URL.revokeObjectURL(a.href);toast('Word downloaded!','ok');
+}
+
+function libPDF(id){
+  const guide=lib.find(g=>g.id===id);if(!guide)return;
+  md=guide.markdown||'';docTitle=guide.title;
+  if(md)dlPDF();else toast('No source for PDF','err');
+}
+
+function useAIPrompt(text) {
+  document.getElementById('aiEditPrompt').value = text;
+  document.getElementById('aiEditPrompt').focus();
+}
+
+async function applyAIEdit() {
+  const apiKey = document.getElementById('apiKey').value.trim();
+  if (!apiKey || !apiKey.startsWith('sk-ant')) { toast('Enter your Claude API key in the Generate tab first', 'err'); return; }
+
+  const editRequest = document.getElementById('aiEditPrompt').value.trim();
+  if (!editRequest) { toast('Describe what edit you want to make', 'err'); return; }
+
+  const currentContent = document.getElementById('reditor').innerText;
+  if (!currentContent.trim() || currentContent.includes('Generate a guide first')) {
+    toast('Open a guide in the editor first', 'err'); return;
+  }
+
+  const btn = document.getElementById('aiEditBtn');
+  const status = document.getElementById('aiEditStatus');
+  btn.disabled = true;
+  btn.textContent = 'APPLYING...';
+  status.style.display = 'block';
+  status.textContent = 'Claude is editing your guide...';
+
+  const prompt = `You are editing a guide document for DoItYaDamnSelf.com. The user wants you to make the following edit to their guide:
+
+EDIT REQUEST: ${editRequest}
+
+Here is the current guide content:
+---
+${currentContent}
+---
+
+Instructions:
+- Apply ONLY the requested edit — don't change anything else
+- Return the COMPLETE updated guide in Markdown format
+- Keep all sections, links, and structure intact unless the edit specifically asks to change them
+- Maintain the same professional but direct tone unless asked to change it
+- Start your response immediately with the # title — no preamble or explanation
+- Use proper markdown: # for title, ## for sections, ### for subsections, > for callouts, - [ ] for checklists, proper bullet indentation`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body: JSON.stringify({model: selMod, max_tokens: 16000, messages: [{role:'user',content:prompt}]})
+    });
+
+    if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || 'API error'); }
+    const data = await res.json();
+    const newMd = data.content?.[0]?.text;
+    if (!newMd) throw new Error('No response from Claude');
+
+    // Update the markdown source and re-render in editor
+    md = newMd.trim();
+    const tm = md.match(/^#\s+(.+)/m);
+    if (tm) docTitle = tm[1];
+
+    const bodyMd = md.replace(/^#\s+.+\n?/m,'').trim();
+    const html = marked.parse(bodyMd);
+    const styled = html.replace(/^<p>(.*?)<\/p>/, '<p style="text-align:center;color:#666;font-style:italic;">$1</p>');
+    document.getElementById('reditor').innerHTML = `<h1 style="text-align:center;">${esc(docTitle)}</h1>${styled}`;
+
+    // Add to edit history
+    const history = document.getElementById('editHistory');
+    const item = document.createElement('div');
+    item.style.cssText = 'background:var(--gray2);border:1px solid var(--border);border-radius:4px;padding:6px 10px;margin-bottom:6px;font-size:10px;color:#4d4;font-family:var(--font-mono);';
+    item.textContent = '✓ ' + editRequest.slice(0,50) + (editRequest.length>50?'...':'');
+    history.insertBefore(item, history.firstChild);
+
+    // Clear the prompt
+    document.getElementById('aiEditPrompt').value = '';
+    toast('Edit applied!', 'ok');
+
+  } catch(err) {
+    toast('Edit failed: ' + err.message, 'err');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'APPLY EDIT';
+    status.style.display = 'none';
+  }
+}
+
+async function delGuide(id){
+  if(!confirm('Delete this guide?'))return;
+  lib=lib.filter(g=>g.id!==id);
+  await syncLib();
+  document.getElementById('libCount').textContent=lib.length;
+  renderLib();toast('Deleted','ok');
+}
+</script>
+</body>
+</html>
